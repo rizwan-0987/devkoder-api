@@ -1,0 +1,22 @@
+envVarGroups:
+  - name: devkoder-secrets
+    envVars:
+      - key: MONGO_URI
+        value: ""          # set this in the Render dashboard after deploy
+      - key: ADMIN_KEY
+        generateValue: true
+
+services:
+  - type: web
+    name: devkoder-api
+    env: node
+    plan: free
+    buildCommand: "npm ci"
+    startCommand: "node src/index.js"
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://www.devkoder.com,http://localhost:5173
+      - fromGroup: devkoder-secrets
