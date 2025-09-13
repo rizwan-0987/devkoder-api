@@ -34,3 +34,34 @@ export async function listApplications(req, res, next) {
         next(err);
     }
 }
+export async function exportApplicationsCsv(req, res, next) {
+    try {
+        const items = await Application.find().sort({ createdAt: -1 }).lean();
+
+        const headers = ["_id", "name", "email", "phone", "message", "createdAt"];
+        const rows = items.map((i) => [
+            i._id ?? "",
+            i.name ?? "",
+            i.email ?? "",
+            i.phone ?? "",
+            String(i.message ?? "").replace(/\r?\n/g, " ").trim(),
+            i.createdAt ? new Date(i.createdAt).toISOString() : "",
+        ]);
+
+        const csv =
+            [headers, ...rows]
+                .map((r) =>
+                    r
+                        .map(String)
+                        .map((s) => `"${s.replaceAll('"', '""')}"`)
+                        .join(",")
+                )
+                .join("\n");
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", "attachment; filename=applications.csv");
+        res.send(csv);
+    } catch (err) {
+        next(err);
+    }
+}

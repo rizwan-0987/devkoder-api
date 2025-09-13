@@ -5,6 +5,8 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import applicationsRouter from "./routes/applications.routes.js";
 import { connectDB } from "./db.js";
+import { exportApplicationsCsv } from "./controllers/applications.controller.js";
+import { requireAdmin } from "./middlewares/adminKey.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -79,6 +81,7 @@ app.post("/admin/login", (req, res) => {
     return res.status(401).json({ ok: false, message: "Invalid credentials" });
 });
 
+app.get("/admin/applications.csv", requireAdmin, ensureDB, exportApplicationsCsv);
 
 
 
