@@ -65,5 +65,20 @@ app.use("/applications", ensureDB, applicationsRouter);
 
 // 404
 app.use((req, res) => res.status(404).json({ ok: false, message: "Not found" }));
+// Error handler (must have 4 args)
+app.use((err, req, res, next) => {
+    console.error("Unhandled error:", err);
+    if (res.headersSent) return next(err);
 
+    // Nice message for CORS denials, etc.
+    if (err?.message?.startsWith("Not allowed by CORS")) {
+        return res.status(403).json({ ok: false, message: "CORS blocked" });
+    }
+
+    const status = err.status || 500;
+    res.status(status).json({
+        ok: false,
+        message: process.env.NODE_ENV === "production" ? "Server error" : err.message,
+    });
+});
 export default app;
