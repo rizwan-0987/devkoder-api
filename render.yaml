@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: devkoder-api
+    env: node
+    plan: free
+    buildCommand: "npm ci"
+    startCommand: "node src/index.js"
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        # allow your site + localhost for testing
+        value: https://www.devkoder.com,http://localhost:5173
+      - key: MONGO_URI
+        fromSecret: MONGO_URI
+      - key: ADMIN_KEY
+        fromSecret: ADMIN_KEY
