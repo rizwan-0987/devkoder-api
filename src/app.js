@@ -19,20 +19,22 @@ const allowList = new Set(
 
 const corsOptions = {
     origin(origin, cb) {
-        if (!origin) return cb(null, true); // curl/Postman
+        if (!origin) return cb(null, true);
         return allowList.has(origin)
             ? cb(null, true)
             : cb(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "x-admin-key"],
+    // 👇 add Authorization here
+    allowedHeaders: ["Content-Type", "x-admin-key", "Authorization"],
     optionsSuccessStatus: 204,
     maxAge: 86400,
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // preflights exit fast
+app.options("*", cors(corsOptions)); // preflights
+ // preflights exit fast
 
 // --- Security / logs / body ---
 app.use(helmet());
