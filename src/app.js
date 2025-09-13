@@ -9,22 +9,22 @@ import { connectDB } from "./db.js";
 const app = express();
 app.set("trust proxy", 1);
 
-// --- DB connect (Mongoose caches the connection) ---
+// --- DB connect ---
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) throw new Error("Missing MONGO_URI");
 await connectDB(MONGO_URI);
 
-// --- CORS (single, robust setup) ---
+// --- CORS ---
 const allowList = new Set(
     (process.env.CORS_ORIGIN || "")
         .split(",")
-        .map((s) => s.trim())
+        .map(s => s.trim())
         .filter(Boolean)
 );
 
 const corsOptions = {
     origin(origin, cb) {
-        if (!origin) return cb(null, true); // allow curl/Postman
+        if (!origin) return cb(null, true);           // allow curl/Postman
         return allowList.has(origin)
             ? cb(null, true)
             : cb(new Error(`Not allowed by CORS: ${origin}`));
@@ -36,16 +36,23 @@ const corsOptions = {
     maxAge: 86400,
 };
 
+// CORS first
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // answer preflights
+app.options("*", cors(corsOptions));               // preflights
 
-// --- Security, logs, parsing, rate-limit ---
+// --- Security / logs / body ---
 app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "100kb" }));
-app.use("/api/", rateLimit({ windowMs: 60_000, max: 60 }));
 
-// --- Routes ---
+// --- Rate limit (skip OPTIONS) ---
+app.use("/api/", rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    skip: (req) => req.method === "OPTIONS"
+}));
+
+// --- Health & routes ---
 app.get("/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 app.use("/api/applications", applicationsRouter);
 
