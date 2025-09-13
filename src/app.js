@@ -9,29 +9,47 @@ import { connectDB } from "./db.js";
 const app = express();
 app.set("trust proxy", 1);
 
-// connect (cached by mongoose under the hood; Vercel will keep warm between calls)
+// --- DB connect (Mongoose caches the connection) ---
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) throw new Error("Missing MONGO_URI");
 await connectDB(MONGO_URI);
 
-// CORS
-const allowed = (process.env.CORS_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
-app.use(cors({
-    origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        if (allowed.length === 0 || allowed.includes(origin)) return cb(null, true);
-        return cb(new Error("Not allowed by CORS"));
-    },
-    credentials: true
-}));
+// --- CORS (single, robust setup) ---
+const allowList = new Set(
+    (process.env.CORS_ORIGIN || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+);
 
+const corsOptions = {
+    origin(origin, cb) {
+        if (!origin) return cb(null, true); // allow curl/Postman
+        return allowList.has(origin)
+            ? cb(null, true)
+            : cb(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-admin-key"],
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // answer preflights
+
+// --- Security, logs, parsing, rate-limit ---
 app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "100kb" }));
 app.use("/api/", rateLimit({ windowMs: 60_000, max: 60 }));
 
+// --- Routes ---
 app.get("/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
 app.use("/api/applications", applicationsRouter);
+
+// 404
 app.use((req, res) => res.status(404).json({ ok: false, message: "Not found" }));
 
 export default app;
