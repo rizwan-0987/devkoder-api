@@ -54,7 +54,7 @@ app.use("/api/", rateLimit({
 
 // --- Health & routes ---
 app.get("/health", (req, res) => res.json({ ok: true, uptime: process.uptime() }));
-app.use("/api/applications", applicationsRouter);
+app.use("/applications", applicationsRouter);
 
 // 404
 app.use((req, res) => res.status(404).json({ ok: false, message: "Not found" }));
