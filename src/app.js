@@ -81,4 +81,19 @@ app.use((err, req, res, next) => {
         message: process.env.NODE_ENV === "production" ? "Server error" : err.message,
     });
 });
+
+import jwt from "jsonwebtoken";
+
+// Admin login -> returns JWT
+app.post("/admin/login", (req, res) => {
+    const { username, password } = req.body || {};
+    const ADMIN_USER = process.env.ADMIN_USER || "admin";
+    const ADMIN_PASS = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+        const token = jwt.sign({ sub: "admin", role: "admin" }, process.env.ADMIN_JWT_SECRET, { expiresIn: "12h" });
+        return res.json({ ok: true, token });
+    }
+    return res.status(401).json({ ok: false, message: "Invalid credentials" });
+});
+
 export default app;
