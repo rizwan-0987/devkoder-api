@@ -1,4 +1,5 @@
 import { Application } from "../models/Application.js";
+import { sendApplicantEmail, sendAdminEmail } from "../lib/mailer.js";
 
 export async function createApplication(req, res, next) {
     try {
@@ -8,15 +9,25 @@ export async function createApplication(req, res, next) {
             phone: req.body.phone,
             message: req.body.message,
         });
+
+        // Send emails — don't fail the request if mail errors
+        try {
+            const adminTo = process.env.ADMIN_EMAIL || process.env.FROM_EMAIL;
+            await Promise.all([
+                doc.email ? sendApplicantEmail({ to: doc.email, name: doc.name }) : Promise.resolve(),
+                adminTo ? sendAdminEmail({ to: adminTo, doc }) : Promise.resolve(),
+            ]);
+        } catch (mailErr) {
+            console.error("Email send failed:", mailErr);
+            // proceed anyway
+        }
+
         return res.status(201).json({ ok: true, data: { id: doc._id } });
     } catch (err) {
-        // Handle Mongo duplicate key (unique email/phone)
         if (err && (err.code === 11000 || /E11000/i.test(err.message))) {
-            return res
-                .status(409)
-                .json({ ok: false, message: "Duplicate: email or phone already exists." });
+            return res.status(409).json({ ok: false, message: "Duplicate: email or phone already exists." });
         }
-        return next(err); // let the error handler format other errors
+        return next(err);
     }
 }
 
@@ -34,30 +45,19 @@ export async function listApplications(req, res, next) {
         next(err);
     }
 }
+
 export async function exportApplicationsCsv(req, res, next) {
     try {
         const items = await Application.find().sort({ createdAt: -1 }).lean();
-
         const headers = ["_id", "name", "email", "phone", "message", "createdAt"];
-        const rows = items.map((i) => [
-            i._id ?? "",
-            i.name ?? "",
-            i.email ?? "",
-            i.phone ?? "",
+        const rows = items.map(i => [
+            i._id ?? "", i.name ?? "", i.email ?? "", i.phone ?? "",
             String(i.message ?? "").replace(/\r?\n/g, " ").trim(),
             i.createdAt ? new Date(i.createdAt).toISOString() : "",
         ]);
-
-        const csv =
-            [headers, ...rows]
-                .map((r) =>
-                    r
-                        .map(String)
-                        .map((s) => `"${s.replaceAll('"', '""')}"`)
-                        .join(",")
-                )
-                .join("\n");
-
+        const csv = [headers, ...rows]
+            .map(r => r.map(String).map(s => `"${s.replaceAll('"', '""')}"`).join(","))
+            .join("\n");
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
         res.setHeader("Content-Disposition", "attachment; filename=applications.csv");
         res.send(csv);
