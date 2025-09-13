@@ -63,6 +63,23 @@ async function ensureDB(req, res, next) {
 // --- Routes (IMPORTANT: no /api prefix here) ---
 app.use("/applications", ensureDB, applicationsRouter);
 
+import jwt from "jsonwebtoken";
+
+// Admin login -> returns JWT
+app.post("/admin/login", (req, res) => {
+    const { username, password } = req.body || {};
+    const ADMIN_USER = process.env.ADMIN_USER || "admin";
+    const ADMIN_PASS = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+        const token = jwt.sign({ sub: "admin", role: "admin" }, process.env.ADMIN_JWT_SECRET, { expiresIn: "12h" });
+        return res.json({ ok: true, token });
+    }
+    return res.status(401).json({ ok: false, message: "Invalid credentials" });
+});
+
+
+
+
 // 404
 app.use((req, res) => res.status(404).json({ ok: false, message: "Not found" }));
 // Error handler (must have 4 args)
@@ -82,18 +99,5 @@ app.use((err, req, res, next) => {
     });
 });
 
-import jwt from "jsonwebtoken";
-
-// Admin login -> returns JWT
-app.post("/admin/login", (req, res) => {
-    const { username, password } = req.body || {};
-    const ADMIN_USER = process.env.ADMIN_USER || "admin";
-    const ADMIN_PASS = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
-        const token = jwt.sign({ sub: "admin", role: "admin" }, process.env.ADMIN_JWT_SECRET, { expiresIn: "12h" });
-        return res.json({ ok: true, token });
-    }
-    return res.status(401).json({ ok: false, message: "Invalid credentials" });
-});
 
 export default app;
