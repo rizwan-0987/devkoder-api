@@ -4,11 +4,10 @@ const {
     SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, FROM_EMAIL
 } = process.env;
 
-// Reuse a pooled transporter across warm invocations on Vercel
 export const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT || 465),
-    secure: String(SMTP_SECURE || "true") === "true", // true for 465, false for 587
+    secure: String(SMTP_SECURE || "true") === "true", 
     auth: { user: SMTP_USER, pass: SMTP_PASS },
     pool: true,
     maxConnections: 3,
